@@ -4,75 +4,65 @@ import pandas as pd
 import re
 from datetime import datetime
 
-# 1. Configuração de página para ocupar toda a largura
-st.set_page_config(layout="wide", page_title="Scanner NF-e Pro")
+# 1. Mudamos para 'centered' (padrão) para evitar o esmagamento horizontal no mobile
+st.set_page_config(layout="centered", page_title="Scanner NF-e Pro")
 
-# 2. CSS para expandir a altura, centralizar e criar a borda de enquadramento
+# 2. CSS agressivo para forçar a altura do container e do iframe
 st.markdown(
     """
     <style>
-    /* Estica o container da câmera */
-    iframe {
-        height: 800px !important; 
+    /* Alvo direto no container que o Streamlit cria para componentes externos */
+    [data-testid="stHtmlBlock"] iframe {
+        height: 600px !important; 
+        min-height: 600px !important;
         width: 100% !important;
-        border: 4px solid #00FF00 !important; /* Borda verde de scanner */
-        border-radius: 15px;
-        box-shadow: 0px 0px 15px rgba(0, 255, 0, 0.3);
+        border: 5px solid #00FF00 !important;
+        border-radius: 20px;
     }
-    /* Estilização dos botões para facilitar o toque no celular */
-    .stButton > button {
-        width: 100%;
-        height: 50px;
-        font-weight: bold;
+    
+    /* Garante que o bloco pai não limite a altura */
+    .element-container, .stMarkdown {
+        width: 100% !important;
     }
     </style>
     """,
     unsafe_allow_html=True
 )
 
-st.title("📲 Scanner de NF-e")
-st.write("Enquadre o QR Code na área verde abaixo:")
+st.title("📲 Scanner Automático")
+st.write("Aproxime o QR Code da moldura verde:")
 
-# Inicializa a lista de links
 if 'links' not in st.session_state:
     st.session_state.links = []
 
-# 3. O componente do Scanner
-# Ele tentará abrir a câmera traseira automaticamente
+# 3. Scanner - A detecção é automática, ele adiciona assim que reconhece
 link_bruto = qrcode_scanner(key='scanner_nfe')
 
 if link_bruto:
-    # Limpeza de caracteres estranhos (Regex)
     match = re.search(r'https?://[^\s]+', link_bruto)
     if match:
         link_limpo = match.group(0)
-        # Evita duplicados na lista
         if link_limpo not in st.session_state.links:
             st.session_state.links.append(link_limpo)
-            st.toast(f"Nota {len(st.session_state.links)} adicionada!", icon="✅")
-        else:
-            st.toast("Nota já está na lista!", icon="⚠️")
+            st.toast(f"Capturado! Total: {len(st.session_state.links)}", icon="✅")
 
-# 4. Exibição e Gerenciamento
+# 4. Área de Gerenciamento (aparece apenas se houver notas)
 if st.session_state.links:
     st.divider()
-    st.subheader(f"Notas na Fila: {len(st.session_state.links)}")
-    
-    # Tabela simplificada para celular
     df = pd.DataFrame(st.session_state.links, columns=["Link da Nota"])
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-    # Botões de Ação
-    col1, col2 = st.columns(2)
-    with col1:
-        csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 Baixar CSV",
-            data=csv,
-            file_name=f"links_nfe_{datetime.now().strftime('%d%m_%H%M')}.csv",
-            mime="text/csv",
-        )
-    with col2:
-        if st.button("🗑️ Limpar Lista"):
-            st.session_state.links = []
-            st.rerun()
+    
+    # Botão de download grande para facilitar o clique
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 BAIXAR LISTA (CSV)",
+        data=csv,
+        file_name=f"notas_{datetime.now().strftime('%d%m_%H%M')}.csv",
+        mime="text/csv",
+        use_container_width=True
+    )
+    
+    if st.button("🗑️ Limpar Lista"):
+        st.session_state.links = []
+        st.rerun()
+        
+    st.dataframe(df, use_container_width=True)
