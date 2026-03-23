@@ -13,7 +13,7 @@ st.markdown(
     <style>
     /* Estica o container da câmera */
     iframe {
-        height: 500px !important; 
+        height: 800px !important; 
         width: 100% !important;
         border: 4px solid #00FF00 !important; /* Borda verde de scanner */
         border-radius: 15px;
