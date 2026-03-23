@@ -20,6 +20,9 @@ st.markdown(
         border-radius: 20px;
         box-shadow: 0px 0px 20px rgba(0, 255, 0, 0.2);
     }
+    [data-testid="stCameraInput"] > div > div {
+        height: 100% !important;
+    }
     /* Melhora os botões para toque no celular */
     .stButton > button {
         width: 100%;
@@ -27,21 +30,6 @@ st.markdown(
         font-weight: bold;
         font-size: 18px;
     }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <style>
-        [data-testid="stCameraInput"], [data-testid="stCameraInput"] > div {
-            width: 100% !important;
-            height: 80vh !important; /* 80% of view height */
-        }
-        [data-testid="stCameraInput"] > div > div {
-            height: 100% !important;
-        }
     </style>
     """,
     unsafe_allow_html=True
