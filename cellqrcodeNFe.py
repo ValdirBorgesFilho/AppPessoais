@@ -13,7 +13,7 @@ st.markdown(
     <style>
     /* Estica o container onde o scanner mora */
     iframe {
-        height: 500px !important; 
+        height: 80vh !important; 
         min-height: 500px !important;
         width: 100% !important;
         border: 5px solid #00FF00 !important; /* Moldura verde */
@@ -32,6 +32,20 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+st.markdown(
+    """
+    <style>
+        [data-testid="stCameraInput"], [data-testid="stCameraInput"] > div {
+            width: 100% !important;
+            height: 80vh !important; /* 80% of view height */
+        }
+        [data-testid="stCameraInput"] > div > div {
+            height: 100% !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 st.title("📲 Scanner Automático")
 st.write("Aponte para o QR Code dentro da área verde.")
 
