@@ -1,57 +1,69 @@
 import streamlit as st
-import cv2
-import numpy as np
+from streamlit_qrcode_scanner import qrcode_scanner
 import pandas as pd
 import re
 from datetime import datetime
 
-st.set_page_config(page_title="Scanner NF-e Estável", page_icon="📷")
+# 1. Configuração padrão (melhor para proporção de câmera no celular)
+st.set_page_config(layout="centered", page_title="Scanner NF-e")
 
-st.title("📷 Scanner de NF-e")
-st.write("Tire uma foto nítida do QR Code da nota.")
+# 2. CSS para forçar a altura da janela da câmera no navegador do celular
+st.markdown(
+    """
+    <style>
+    /* Alvo no iframe do scanner para dar altura e borda */
+    iframe {
+        height: 650px !important; 
+        min-height: 650px !important;
+        width: 100% !important;
+        border: 4px solid #00FF00 !important;
+        border-radius: 15px;
+    }
+    /* Estilo para a tabela e botões */
+    div.stButton > button {
+        width: 100%;
+        height: 50px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.title("📲 Scanner de NF-e")
+st.write("Aponte a câmera. A leitura é automática.")
 
 if 'links' not in st.session_state:
     st.session_state.links = []
 
-# 1. Componente nativo (usa a câmera do sistema com foco automático)
-imagem_camera = st.camera_input("Alinhe o QR Code e clique em 'Take Photo'")
+# 3. O Componente de Scanner (Aquele que você confirmou que funciona)
+link_bruto = qrcode_scanner(key='scanner_nfe_v2')
 
-if imagem_camera is not None:
-    # Converter imagem para formato OpenCV
-    bytes_data = imagem_camera.getvalue()
-    cv2_img = cv2.imdecode(np.frombuffer(bytes_data, np.uint8), cv2.IMREAD_COLOR)
-    
-    # Detector de QR Code do OpenCV
-    detector = cv2.QRCodeDetector()
-    link_detectado, bbox, _ = detector.detectAndDecode(cv2_img)
-    
-    if link_detectado:
-        # Limpeza do link (Regex)
-        match = re.search(r'https?://[^\s]+', link_detectado)
-        if match:
-            link_limpo = match.group(0)
-            if link_limpo not in st.session_state.links:
-                st.session_state.links.append(link_limpo)
-                st.success(f"Nota capturada! Total: {len(st.session_state.links)}")
-            else:
-                st.info("Esta nota já foi adicionada.")
-    else:
-        st.error("Não foi possível ler o QR Code. Tente aproximar mais ou melhorar a iluminação.")
+if link_bruto:
+    # Limpeza do link via Regex
+    match = re.search(r'https?://[^\s]+', link_bruto)
+    if match:
+        link_limpo = match.group(0)
+        if link_limpo not in st.session_state.links:
+            st.session_state.links.append(link_limpo)
+            st.toast(f"Nota {len(st.session_state.links)} capturada!", icon="✅")
 
-# 2. Gerenciamento dos Links
+# 4. Exibição dos resultados e Download
 if st.session_state.links:
     st.divider()
-    df = pd.DataFrame(st.session_state.links, columns=["Link da Nota"])
+    st.subheader(f"Lista de Notas ({len(st.session_state.links)})")
     
+    df = pd.DataFrame(st.session_state.links, columns=["Link da Nota"])
+    st.dataframe(df, use_container_width=True)
+
     csv = df.to_csv(index=False).encode('utf-8')
     st.download_button(
-        label="📥 Baixar Lista (CSV)",
+        label="📥 BAIXAR CSV PARA O PC",
         data=csv,
         file_name=f"notas_{datetime.now().strftime('%d%m_%H%M')}.csv",
         mime="text/csv",
         use_container_width=True
     )
-    
+
     if st.button("🗑️ Limpar Lista"):
         st.session_state.links = []
         st.rerun()
