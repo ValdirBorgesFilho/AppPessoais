@@ -1,4 +1,6 @@
 streamlit==1.31.0
 streamlit-qrcode-scanner
+streamlit-camera-input-live
+opencv-python-headless
 numpy
 pandas>=2.2.0
