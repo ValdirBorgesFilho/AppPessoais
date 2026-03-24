@@ -1,4 +1,6 @@
 import streamlit as st
+import sys
+import subprocess
 from streamlit_camera_input_live import camera_input_live
 import cv2
 import numpy as np
