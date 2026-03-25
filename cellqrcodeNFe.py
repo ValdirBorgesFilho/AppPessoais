@@ -2,97 +2,75 @@ import streamlit as st
 from streamlit_qrcode_scanner import qrcode_scanner
 import pandas as pd
 import re
+import time
 from datetime import datetime
 
-# 1. Configuração da página
 st.set_page_config(layout="centered", page_title="Scanner NF-e Pro")
 
-# 2. CSS para criar a moldura externa e forçar a altura do Iframe
-st.markdown(
-    """
+# CSS Ajustado: Removemos o excesso de bordas no iframe que atrapalha o clique no mobile
+st.markdown("""
     <style>
-    /* Estica o container onde o scanner mora */
     iframe {
-        height: 80vh !important; 
-        min-height: 500px !important;
+        height: 450px !important; 
         width: 100% !important;
-        border: 5px solid #00FF00 !important; /* Moldura verde */
-        border-radius: 20px;
-        box-shadow: 0px 0px 20px rgba(0, 255, 0, 0.2);
+        border: 4px solid #00FF00 !important;
+        border-radius: 15px;
     }
-    [data-testid="stCameraInput"] > div > div {
-        height: 100% !important;
-    }
-    /* Melhora os botões para toque no celular */
-    .stButton > button {
-        width: 100%;
-        height: 60px;
-        font-weight: bold;
-        font-size: 18px;
-    }
+    .stApp { background-color: #111; }
     </style>
-    """,
-    unsafe_allow_html=True
-)
-st.title("📲 Scanner Automático")
-st.write("Aponte para o QR Code dentro da área verde.")
+    """, unsafe_allow_html=True)
 
-# Inicializa a lista de links na sessão
+st.title("📲 Scanner NF-e")
+
 if 'links_nfe' not in st.session_state:
     st.session_state.links_nfe = []
+if 'last_qr' not in st.session_state:
+    st.session_state.last_qr = None
 
-# 3. O Componente de Scanner com Proteção contra Erros
-# Removidos estilos internos complexos que podem causar o erro na linha 44
-try:
-    # Captura o retorno do scanner
-    link_bruto = qrcode_scanner(key='scanner_nfe_v2')
-except Exception as e:
-    st.error(f"Erro ao carregar a câmera: {e}")
-    link_bruto = None
+# 3. Scanner com chave dinâmica para forçar reset após leitura
+scanner_key = f"scanner_{len(st.session_state.links_nfe)}"
+link_bruto = qrcode_scanner(key=scanner_key)
 
-# 4. Lógica de captura com validação de tipo (O SEGREDO PARA NÃO QUEBRAR)
-if link_bruto and isinstance(link_bruto, str):
+# 4. Lógica de Captura Refinada
+if link_bruto:
+    # Limpeza profunda da string (remove espaços e caracteres especiais de controle)
+    link_limpo_bruto = str(link_bruto).strip()
     
-    # Regex para pegar apenas a URL limpa (ignora lixo antes do http)
-    match = re.search(r'https?://[^\s]+', link_bruto)
+    # Busca apenas a URL (padrão de NF-e geralmente contém 'nfe' ou 'fazenda')
+    match = re.search(r'https?://[^\s|]+', link_limpo_bruto)
     
     if match:
-        link_limpo = match.group(0)
+        link_final = match.group(0)
         
-        # Só adiciona se o link for novo na sessão atual
-        if link_limpo not in st.session_state.links_nfe:
-            st.session_state.links_nfe.append(link_limpo)
-            st.toast(f"Nota {len(st.session_state.links_nfe)} capturada!", icon="✅")
-            # Força o recarregamento para limpar o buffer do scanner após leitura
-            st.rerun()
-        else:
-            # Aviso temporário caso já tenha lido
-            st.toast("Essa nota já foi lida.", icon="⚠️")
+        # Evita duplicidade imediata e processamento repetido do mesmo frame
+        if link_final != st.session_state.last_qr:
+            if link_final not in st.session_state.links_nfe:
+                st.session_state.links_nfe.append(link_final)
+                st.session_state.last_qr = link_final
+                st.toast(f"Nota {len(st.session_state.links_nfe)} capturada!", icon="✅")
+                
+                # Delay crucial para o usuário ver o feedback antes do refresh
+                time.sleep(0.5) 
+                st.rerun()
+            else:
+                st.warning("Esta nota já está na lista!")
+                time.sleep(1)
+                st.rerun()
 
-# 5. Exibição e Botões de Ação
+# 5. Interface de Resultados
 if st.session_state.links_nfe:
-    st.divider()
-    st.subheader(f"Notas na Fila: {len(st.session_state.links_nfe)}")
-    
-    # Cria o DataFrame para exibição e download
-    df = pd.DataFrame(st.session_state.links_nfe, columns=["Link da Nota"])
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.subheader(f"📋 Notas na Fila: {len(st.session_state.links_nfe)}")
+    df = pd.DataFrame(st.session_state.links_nfe, columns=["URL da Nota"])
+    st.dataframe(df, use_container_width=True)
 
     col1, col2 = st.columns(2)
-    
     with col1:
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button(
-            label="📥 BAIXAR CSV",
-            data=csv,
-            file_name=f"notas_{datetime.now().strftime('%d%m_%H%M')}.csv",
-            mime="text/csv",
-            use_container_width=True
-        )
-        
+        st.download_button("📥 Baixar CSV", csv, "notas.csv", "text/csv", use_container_width=True)
     with col2:
-        if st.button("🗑️ Limpar Lista"):
+        if st.button("🗑️ Limpar Tudo"):
             st.session_state.links_nfe = []
+            st.session_state.last_qr = None
             st.rerun()
 else:
-    st.info("Nenhuma nota lida ainda. Aponte a câmera para um QR Code de NF-e.")
+    st.info("Aguardando leitura de QR Code...")
