@@ -1,7 +1,7 @@
 import streamlit as st
 import cv2
 import numpy as np
-import zxing_cpp  # Engine C++ atualizada de altíssimo desempenho
+import zxing  # Engine C++ atualizada de altíssimo desempenho
 
 st.title("Scanner Industrial - QR Code Denso")
 
